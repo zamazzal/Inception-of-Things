@@ -29,8 +29,6 @@ Vagrant.configure("2") do |config|
       vb.cpus = 1
       vb.name = master_name
     end
-    master.vm.provision "shell", path: "scripts/firewalld-disable.sh"
-    master.vm.provision "shell", path: "scripts/k3s-install.sh"
     master.vm.provision "up", type: "shell", run: "always", inline: <<-SHELL
     nohup /usr/local/bin/k3s server --write-kubeconfig /shared/kubeconfig --write-kubeconfig-mode 644 --node-name ServerMaster --flannel-iface eth1 >> /var/log/k3s-server.log 2>&1 & 
     SHELL
