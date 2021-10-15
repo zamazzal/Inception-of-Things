@@ -1,0 +1,65 @@
+
+
+box = "generic/centos8"
+
+shared_localpath = "shared"
+shared_vmpath = "/shared"
+
+master_addr = "192.168.42.110"
+slave1_addr = "192.168.42.111"
+
+master_name = "zamazzalServer"
+slave1_name = "zamazzalServerWorker"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = box
+  config.ssh.forward_agent = true
+	config.vm.synced_folder shared_localpath, shared_vmpath, type: 'virtualbox'
+
+  config.vm.provision "shell", path: "scripts/firewalld-disable.sh"
+  config.vm.provision "shell", path: "scripts/k3s-install.sh"
+
+  config.vm.define master_name do |master|
+    master.vm.hostname = master_name
+    master.vm.network "private_network", ip: master_addr, hostname: true
+    master.vm.provider "virtualbox" do |vb|
+      vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+      vb.memory = "512"
+      vb.cpus = 1
+      vb.name = master_name
+    end
+    master.vm.provision "shell", path: "scripts/firewalld-disable.sh"
+    master.vm.provision "shell", path: "scripts/k3s-install.sh"
+    master.vm.provision "up", type: "shell", run: "always", inline: <<-SHELL
+    nohup /usr/local/bin/k3s server --write-kubeconfig /shared/kubeconfig --write-kubeconfig-mode 644 --node-name ServerMaster --flannel-iface eth1 >> /var/log/k3s-server.log 2>&1 & 
+    SHELL
+    master.vm.provision "shell", inline: <<-SHELL
+    NODE_TOKEN="/var/lib/rancher/k3s/server/node-token"
+    while [ ! -e ${NODE_TOKEN} ]
+    do
+      echo "Waiting for node token..."
+      sleep 1
+    done
+    cp ${NODE_TOKEN} /shared/master1-token
+    SHELL
+    master.vm.provision "shell", path: "scripts/kubectl-install.sh"
+  end
+
+  config.vm.define slave1_name do |slave1|
+    slave1.vm.hostname = slave1_name
+    slave1.vm.network "private_network", ip: slave1_addr, hostname: true
+    slave1.vm.provider "virtualbox" do |vb|
+      vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+      vb.memory = "512"
+      vb.cpus = 1
+      vb.name = slave1_name
+    end
+    slave1.vm.provision "up", type: "shell", run: "always", inline: <<-SHELL
+    cp /shared/master1-token ~/master1-token
+    nohup /usr/local/bin/k3s agent --server https://192.168.42.110:6443 --token-file ~/master1-token --flannel-iface eth1 >> /var/log/k3s-agent.log 2>&1 & 
+    SHELL
+    slave1.vm.provision "shell", path: "scripts/kubectl-install.sh"
+  end
+end
