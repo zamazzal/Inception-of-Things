@@ -1,15 +1,11 @@
-
-
 box = "generic/centos8"
 
 shared_localpath = "."
 shared_vmpath = "/shared"
 
 master_addr = "192.168.42.110"
-slave1_addr = "192.168.42.111"
 
 master_name = "zamazzalServer"
-slave1_name = "zamazzalServerWorker"
 
 Vagrant.configure("2") do |config|
   config.vm.box = box
@@ -27,10 +23,8 @@ Vagrant.configure("2") do |config|
     master.vm.hostname = master_name
     master.vm.network "private_network", ip: master_addr, hostname: true
     master.vm.provider "virtualbox" do |vb|
-      vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
-      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
-      vb.memory = "512"
-      vb.cpus = 1
+      vb.memory = "2048"
+      vb.cpus = 2
       vb.name = master_name
     end
 
@@ -49,24 +43,27 @@ Vagrant.configure("2") do |config|
     SHELL
 
     master.vm.provision "shell", path: "scripts/kubectl-install.sh"
-  end
 
-  config.vm.define slave1_name do |slave1|
-    slave1.vm.hostname = slave1_name
-    slave1.vm.network "private_network", ip: slave1_addr, hostname: true
-    slave1.vm.provider "virtualbox" do |vb|
-      vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
-      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
-      vb.memory = "512"
-      vb.cpus = 1
-      vb.name = slave1_name
-    end
+    master.vm.provision "shell", inline: <<-SHELL
+      cp /shared/scripts/*.yaml ~/
+      while [ $(/usr/local/bin/k3s kubectl get nodes | grep Ready | wc -l) != 1 ]
+        do
+          echo "Waiting for node..."
+          sleep 1
+        done
+      /usr/local/bin/k3s kubectl get nodes
+      /usr/local/bin/k3s kubectl apply -f ~/ngnix-indexes.yaml
+      /usr/local/bin/k3s kubectl apply -f ~/app1.yaml
+      /usr/local/bin/k3s kubectl apply -f ~/app2.yaml
+      /usr/local/bin/k3s kubectl apply -f ~/app3.yaml
 
-    slave1.vm.provision "up", type: "shell", run: "always", inline: <<-SHELL
-    cp /shared/confs/master1-token ~/master1-token
-    nohup /usr/local/bin/k3s agent --server https://192.168.42.110:6443 --token-file ~/master1-token --flannel-iface eth1 >> /var/log/k3s-agent.log 2>&1 & 
+      while [ $(/usr/local/bin/k3s kubectl get pods | grep Running | wc -l) != 5 ]
+      do
+        echo "Waiting for pods..."
+        sleep 1
+      done
+      sleep 60
+      /usr/local/bin/k3s kubectl apply -f ~/ingress.yaml
     SHELL
-    
-    slave1.vm.provision "shell", path: "scripts/kubectl-install.sh"
-  end
+    end
 end

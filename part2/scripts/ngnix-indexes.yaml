@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app1-index
+  namespace: default
+data:
+  index.html: |
+    <html>
+    <h1>Welcome</h1>
+    </br>
+    <h1>Hi! This is app1 </h1>
+    </html>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app2-index
+  namespace: default
+data:
+  index.html: |
+    <html>
+    <h1>Welcome</h1>
+    </br>
+    <h1>Hi! This is app2 </h1>
+    </html>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app3-index
+  namespace: default
+data:
+  index.html: |
+    <html>
+    <h1>Welcome</h1>
+    </br>
+    <h1>Hi! This is app3 </h1>
+    </html>

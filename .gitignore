@@ -1,5 +1,7 @@
 # General
 .vagrant/
+kubeconfig
+master1-token
 
 # Log files (if you are creating logs in debug mode, uncomment this)
 # *.log
