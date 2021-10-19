@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-wilapp
+  namespace: argocd
+spec:
+  destination:
+    namespace: dev
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    repoURL: https://github.com/zamazzal/iot-app.git
+    path: .
+    targetRevision: master
+  syncPolicy:
+    prune: true
+    selfHeal: true
