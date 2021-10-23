@@ -1,0 +1,66 @@
+box = "generic/centos8"
+
+shared_localpath = "."
+shared_vmpath = "/shared"
+
+master_addr = "192.168.42.110"
+
+master_name = "zamazzalServer"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = box
+  config.ssh.forward_agent = true
+	config.vm.synced_folder shared_localpath, shared_vmpath, type: 'virtualbox'
+
+  config.vm.provision "shell", path: "scripts/firewalld-disable.sh"
+  config.vm.provision "shell", path: "scripts/k3s-install.sh"
+
+  config.vm.provision "shell", inline: <<-SHELL
+    mkdir -p /shared/confs
+  SHELL
+
+  config.vm.define master_name do |master|
+    master.vm.hostname = master_name
+    master.vm.network "private_network", ip: master_addr, hostname: true
+    master.vm.provider "virtualbox" do |vb|
+      vb.memory = "7168"
+      vb.cpus = 4
+      vb.name = master_name
+    end
+
+    master.vm.provision "up", type: "shell", run: "always", inline: <<-SHELL
+    nohup /usr/local/bin/k3s server --write-kubeconfig /shared/confs/kubeconfig --write-kubeconfig-mode 644 --node-name zamazzalServer --flannel-iface eth1 >> /var/log/k3s-server.log 2>&1 & 
+    SHELL
+
+    master.vm.provision "shell", inline: <<-SHELL
+    NODE_TOKEN="/var/lib/rancher/k3s/server/node-token"
+    while [ ! -e ${NODE_TOKEN} ]
+    do
+      echo "Waiting for node token..."
+      sleep 1
+    done
+    cp ${NODE_TOKEN} /shared/confs/master1-token
+    SHELL
+
+    master.vm.provision "shell", path: "scripts/kubectl-install.sh"
+
+    master.vm.provision "shell", inline: <<-SHELL
+      while [ $(/usr/local/bin/k3s kubectl get nodes | grep Ready | wc -l) != 1 ]
+        do
+          echo "Waiting for node..."
+          sleep 1
+        done
+      /usr/local/bin/k3s kubectl create namespace gitlab
+    SHELL
+    
+    master.vm.provision "shell", path: "scripts/helm-install.sh"
+
+    master.vm.provision "shell", inline: <<-SHELL
+      #helm repo add gitlab https://charts.gitlab.io/
+      #helm repo update
+      #helm upgrade --install gitlab gitlab/gitlab --timeout 600s --set global.hosts.externalIP=192.168.42.110 --set certmanager-issuer.email=zouhair.amazzal@gmail.com -n gitlab
+    SHELL
+    end
+end
+
+
