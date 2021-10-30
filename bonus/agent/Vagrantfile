@@ -21,7 +21,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.define slave1_name do |slave1|
     slave1.vm.hostname = slave1_name
-    slave1.vm.network "private_network", ip: slave1_addr, hostname: true
+    master.vm.network "public_network", use_dhcp_assigned_default_route: true
     slave1.vm.network "forwarded_port", guest: 6443, host: 6443
     slave1.vm.network "forwarded_port", guest: 8472, host: 8472, protocol: "udp"
     slave1.vm.network "forwarded_port", guest: 10250, host: 10250
@@ -33,7 +33,7 @@ Vagrant.configure("2") do |config|
 
     slave1.vm.provision "up", type: "shell", run: "always", inline: <<-SHELL
     cp /shared/confs/master1-token ~/master1-token
-    nohup /usr/local/bin/k3s agent --server https://192.168.42.110:6443 --token-file ~/master1-token --node-name zamazzalSW --flannel-iface eth1 >> /var/log/k3s-agent.log 2>&1 & 
+    nohup /usr/local/bin/k3s agent --server https://10.11.11.5:6443 --token-file ~/master1-token --node-name zamazzalSW --flannel-iface eth1 >> /var/log/k3s-agent.log 2>&1 & 
     SHELL
     
   end
