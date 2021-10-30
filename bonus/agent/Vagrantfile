@@ -1,0 +1,40 @@
+box = "generic/centos8"
+
+shared_localpath = "."
+shared_vmpath = "/shared"
+
+slave1_addr = "192.168.42.111"
+
+slave1_name = "zamazzalServerWorker"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = box
+  config.ssh.forward_agent = true
+  config.vm.synced_folder shared_localpath, shared_vmpath, type: 'virtualbox'
+
+  config.vm.provision "shell", path: "scripts/firewalld-disable.sh"
+  config.vm.provision "shell", path: "scripts/k3s-install.sh"
+
+  config.vm.provision "shell", inline: <<-SHELL
+    mkdir -p /shared/confs
+  SHELL
+
+  config.vm.define slave1_name do |slave1|
+    slave1.vm.hostname = slave1_name
+    slave1.vm.network "private_network", ip: slave1_addr, hostname: true
+    slave1.vm.network "forwarded_port", guest: 6443, host: 6443
+    slave1.vm.network "forwarded_port", guest: 8472, host: 8472, protocol: "udp"
+    slave1.vm.network "forwarded_port", guest: 10250, host: 10250
+    slave1.vm.provider "virtualbox" do |vb|
+      vb.memory = "5000"
+      vb.cpus = 3
+      vb.name = slave1_name
+    end
+
+    slave1.vm.provision "up", type: "shell", run: "always", inline: <<-SHELL
+    cp /shared/confs/master1-token ~/master1-token
+    nohup /usr/local/bin/k3s agent --server https://192.168.42.110:6443 --token-file ~/master1-token --node-name zamazzalSW --flannel-iface eth1 >> /var/log/k3s-agent.log 2>&1 & 
+    SHELL
+    
+  end
+end
