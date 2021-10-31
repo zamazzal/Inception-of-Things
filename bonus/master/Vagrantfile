@@ -21,11 +21,8 @@ Vagrant.configure("2") do |config|
   config.vm.define master_name do |master|
     master.vm.hostname = master_name
     master.vm.network "public_network", use_dhcp_assigned_default_route: true
-    master.vm.network "forwarded_port", guest: 6443, host: 6443
-    master.vm.network "forwarded_port", guest: 8472, host: 8472, protocol: "udp"
-    master.vm.network "forwarded_port", guest: 10250, host: 10250
     master.vm.provider "virtualbox" do |vb|
-      vb.memory = "5000"
+      vb.memory = "4096"
       vb.cpus = 3
       vb.name = master_name
     end

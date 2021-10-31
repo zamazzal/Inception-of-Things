@@ -7,3 +7,5 @@ mkdir ~/.kube/
 cp -r /shared/confs/kubeconfig ~/.kube/config
 cp -r ~/.kube /home/vagrant/
 chown -R vagrant:vagrant /home/vagrant/.kube/
+alias kubectl=/usr/local/bin/kubectl
+
