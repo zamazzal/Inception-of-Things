@@ -21,7 +21,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.define slave1_name do |slave1|
     slave1.vm.hostname = slave1_name
-    master.vm.network "public_network", use_dhcp_assigned_default_route: true
+    slave1.vm.network "public_network", use_dhcp_assigned_default_route: true
     slave1.vm.network "forwarded_port", guest: 6443, host: 6443
     slave1.vm.network "forwarded_port", guest: 8472, host: 8472, protocol: "udp"
     slave1.vm.network "forwarded_port", guest: 10250, host: 10250
